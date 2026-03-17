@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+
+body{
+margin:0;
+font-family:Arial, Helvetica, sans-serif;
+background:#f4f4f4;
+overflow-x:hidden;
+}
+
+header{
+position:fixed;
+top:0;
+width:100%;
+background:white;
+border-bottom:1px solid #ddd;
+padding:18px 40px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+z-index:1000;
+}
+
+.cart{
+font-size:14px;
+cursor:pointer;
+}
+
+.cart.active{
+color:red;
+font-weight:bold;
+}
+
+.center-tier{
+position:absolute;
+left:50%;
+transform:translateX(-50%);
+text-align:center;
+}
+
+.status{
+font-size:14px;
+}
+
+.progress-wrap{
+width:220px;
+height:6px;
+background:#eee;
+border-radius:5px;
+overflow:hidden;
+margin-top:6px;
+}
+
+.progress{
+height:100%;
+width:0%;
+background:black;
+transition:.4s;
+}
+
+nav{
+margin-top:70px;
+background:white;
+border-bottom:1px solid #eee;
+padding:12px 40px;
+display:flex;
+gap:30px;
+font-size:14px;
+}
+
+.container{
+padding:40px;
+display:grid;
+grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+gap:28px;
+max-width:1200px;
+margin:auto;
+}
+
+.product{
+border:1px solid #eee;
+padding:15px;
+background:white;
+position:relative;
+transition:.2s;
+}
+
+.product:hover{
+transform:translateY(-4px);
+box-shadow:0 8px 18px rgba(0,0,0,0.1);
+}
+
+.product img{
+width:100%;
+height:300px;
+object-fit:cover;
+margin-bottom:10px;
+}
+
+
+.tier0 .product{background:#D6E2FF;}
+.tier1 .product{background:#F7D9C4;}
+.tier2 .product{background:#F2C6DE;}
+.tier3 .product{background:#C6DEF1;}
+.tier4 .product{background:#C9E4DE;}
+.tier5 .product{background:#FCF9BE;}
+.tier6 .product{background:#F2A0A0;}
+.tier7 .product{background:#C0FFFF;}
+
+
+@keyframes pulseHot {
+0% { transform: scale(1); }
+50% { transform: scale(1.4); }
+100% { transform: scale(1); }
+}
+
+.hot{
+position:absolute;
+top:10px;
+left:10px;
+background:red;
+color:white;
+font-size:11px;
+padding:4px 6px;
+}
+
+
+@keyframes pulseCart {
+0% { transform: scale(1); }
+50% { transform: scale(1.15); }
+100% { transform: scale(1); }
+}
+
+button{
+margin-top:10px;
+padding:10px;
+width:100%;
+border:1px solid black;
+background:white;
+cursor:pointer;
+}
+
+button.clicked{
+border:1px solid red;
+color:red;
+}
+
+
+.coin{
+position:fixed;
+font-size:14px;
+color:#d4af37;
+pointer-events:none;
+animation:floatUp 2.5s ease forwards;
+}
+
+@keyframes floatUp{
+0%{transform:translateY(0);opacity:1;}
+100%{transform:translateY(-100px);opacity:0;}
+}
+
+
+.notification{
+position:fixed;
+left:25px;
+background:white;
+border:2px solid black;
+padding:12px 18px;
+font-size:13px;
+animation:slideUp 4s forwards;
+}
+
+@keyframes slideUp{
+0%{opacity:0;transform:translateY(20px);}
+10%{opacity:1;}
+90%{opacity:1;}
+100%{opacity:0;transform:translateY(-20px);}
+}
+
+.center-popup{
+position:fixed;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%) scale(.9);
+background:white;
+border:4px solid black;
+padding:30px 50px;
+font-size:26px;
+font-weight:bold;
+text-align:center;
+opacity:0;
+transition:.3s;
+z-index:2000;
+}
+
+.center-popup.show{
+opacity:1;
+transform:translate(-50%,-50%) scale(1);
+}
+
+</style>
+</head>
+
+<body class="tier0">
+
+<header>
+
+<div class="center-tier">
+<div class="status">
+Tier: <span id="tierName">Rookie</span> |
+Points: <span id="points">0</span>
+</div>
+
+<div class="progress-wrap">
+<div class="progress" id="progress"></div>
+</div>
+</div>
+
+<div class="cart" id="cartBox">
+CART (<span id="cartCount">0</span>)
+</div>
+
+</header>
+
+<nav>
+<div>NEW</div>
+<div>TRENDING</div>
+<div>COLLECTIONS</div>
+<div>SALE</div>
+</nav>
+
+<div class="container" id="products"></div>
+<div class="center-popup" id="centerPopup"></div>
+
+<script>
+
+let pts=0, tier=0, goal=200, cart=0, itemCount=1
+let last=0
+let notifCount=0
+
+const tierNames=["Rookie","Explorer","Trend Seeker","VIP","Elite","Ultra","Diamond","Infinity"]
+
+const places=["Canada","USA","UK","Germany","France","Japan","Australia","Italy"]
+
+function makeProduct(){
+
+let wrap=document.getElementById("products")
+let box=document.createElement("div")
+box.className="product"
+
+let hot=""
+if(Math.random() > (0.7 - tier*0.05)){
+
+let speed = tier <= 1 ? 0 : (1.2 - tier*0.1)
+
+hot = `<div class='hot' style="
+animation:${tier > 1 ? `pulseHot ${speed}s infinite` : 'none'};
+">HOT</div>`
+}
+
+box.innerHTML=`
+${hot}
+<img src="images/${(itemCount % 10) + 1}.jpg">
+<h3>Item ${itemCount}</h3>
+<p>$${(20+Math.random()*100).toFixed(2)}</p>
+<button onclick="addCart(this)">Add to Cart</button>
+`
+
+wrap.appendChild(box)
+itemCount++
+}
+
+for(let i=0;i<24;i++) makeProduct()
+
+window.addEventListener("scroll",function(){
+
+if(window.scrollY-last>250){
+
+let base=Math.floor(Math.random()*10)+5
+let reward=base*(tier+1)
+
+addPoints(reward)
+burstPoints(reward)
+
+last=window.scrollY
+}
+
+if(window.innerHeight+window.scrollY>=document.body.offsetHeight-200){
+for(let i=0;i<12;i++) makeProduct()
+}
+})
+
+function addPoints(n){
+
+pts+=n
+document.getElementById("points").innerText=pts
+
+let percent=(pts/goal)*100
+document.getElementById("progress").style.width=percent+"%"
+
+let popupChance = tier <= 1 ? 0.15 : (0.15 + tier*0.05)
+
+if(Math.random()<popupChance){
+centerPopup("Only "+(goal-pts)+" points away")
+}
+
+if(pts>=goal) newTier()
+}
+
+function burstPoints(n){
+
+let multiplier = tier <= 1 ? 1 : (tier * 2)
+let bursts = (Math.floor(Math.random()*3)+2) * multiplier
+
+for(let i=0;i<bursts;i++){
+
+let coin=document.createElement("div")
+coin.className="coin"
+
+let repeat = tier <= 1 ? 1 : Math.floor(Math.random()*multiplier)+1
+coin.innerText = Array(repeat).fill("+"+n+" 💰").join(" ")
+
+coin.style.left=(Math.random()*window.innerWidth)+"px"
+coin.style.top=(window.innerHeight/2+Math.random()*200)+"px"
+coin.style.fontSize=(14+tier*2)+"px"
+
+document.body.appendChild(coin)
+
+let duration = tier <= 1 ? 1800 : (1800 + tier * 400)
+
+setTimeout(()=> coin.remove(), duration)
+}
+}
+
+function newTier(){
+
+tier++
+if(tier>=tierNames.length) tier=tierNames.length-1
+
+document.getElementById("tierName").innerText=tierNames[tier]
+document.body.className="tier"+tier
+
+pts=0
+goal=Math.floor(goal*1.8)
+
+document.getElementById("progress").style.width="0%"
+centerPopup("NEW TIER UNLOCKED")
+}
+
+function addCart(btn){
+
+btn.classList.add("clicked")
+setTimeout(()=>btn.classList.remove("clicked"),800)
+
+cart++
+document.getElementById("cartCount").innerText=cart
+document.getElementById("cartBox").classList.add("active")
+
+let msgs = tier <= 2 ? [
+"buy now before its gone",
+"unlock discount in next tier",
+"scroll for new release"
+] : [
+"BUY NOW",
+"ONLY A FEW LEFT",
+"YOU NEED THIS",
+"LAST CHANCE"
+]
+
+centerPopup(msgs[Math.floor(Math.random()*msgs.length)])
+}
+
+function centerPopup(t){
+let p=document.getElementById("centerPopup")
+p.innerText=t
+p.classList.add("show")
+setTimeout(()=>p.classList.remove("show"),2000)
+}
+
+
+function createNotification(text){
+let n=document.createElement("div")
+n.className="notification"
+n.innerText=text
+n.style.bottom=(25+(notifCount*55))+"px"
+
+document.body.appendChild(n)
+notifCount++
+
+setTimeout(()=>{
+n.remove()
+notifCount--
+},4000)
+}
+
+setInterval(()=>{
+
+let place=places[Math.floor(Math.random()*places.length)]
+
+let msgs=[
+"Someone in "+place+" just bought this",
+"Someone in "+place+" added this to cart",
+"Someone in "+place+" is viewing this item",
+"Someone in "+place+" just checked out"
+]
+
+createNotification(msgs[Math.floor(Math.random()*msgs.length)])
+
+},1800)
+
+
+setInterval(()=>{
+
+if(tier >= 4){
+
+let cartEl = document.getElementById("cartBox")
+
+if(Math.random() > 0.5){
+
+let speed = 1 - (tier * 0.08)
+if(speed < 0.4) speed = 0.4
+
+cartEl.style.animation = `pulseCart ${speed}s infinite`
+
+} else {
+cartEl.style.animation = "none"
+}
+
+}
+
+},2000)
+
+</script>
+
+</body>
+</html>
